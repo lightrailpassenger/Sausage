@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import javax.swing.JFileChooser;
 
 public class ReadWriteUtils {
@@ -14,6 +16,15 @@ public class ReadWriteUtils {
         int returnValue = chooser.showOpenDialog(parent);
 
         return returnValue == JFileChooser.APPROVE_OPTION ? chooser.getSelectedFile() : null;
+    }
+
+    public static void writeFile(File targetFile, Charset charset, String content) throws IOException {
+        Files.write(
+            targetFile.toPath(),
+            Collections.singletonList(content),
+            charset,
+            StandardOpenOption.CREATE
+        );
     }
 
     public static String readFile(File targetFile, Charset charset) throws IOException {

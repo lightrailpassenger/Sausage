@@ -9,6 +9,8 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Map;
+import java.util.HashMap;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -20,12 +22,15 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import io.github.lightrailpassenger.sausage.utils.ReadWriteUtils;
 
 import static io.github.lightrailpassenger.sausage.constants.SausageConstants.*;
 
-class SausageFrame extends JFrame {
+class SausageFrame extends JFrame implements ChangeListener {
+    private final Map<JComponent, File> tabToFileMap = new HashMap<>();
     private final JMenuBar menuBar = new JMenuBar();
     private final JTabbedPane tabbedPane = new JTabbedPane();
 
@@ -36,7 +41,17 @@ class SausageFrame extends JFrame {
         this.setJMenuBar(this.menuBar);
         this.constructMenu();
         this.add(tabbedPane, BorderLayout.CENTER);
+        this.tabbedPane.addChangeListener(this);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    }
+
+    @Override
+    public void stateChanged(ChangeEvent ev) {
+        if (ev.getSource() instanceof JTabbedPane) {
+            File file = tabToFileMap.get(tabbedPane.getSelectedComponent());
+
+            this.setTitle(SAUSAGE_FRAME_TITLE + (file == null ? "" : " - " + file.getPath()));
+        }
     }
 
     private static JMenuItem constructMenuItemWithAction(String name, Runnable action) {
@@ -51,9 +66,12 @@ class SausageFrame extends JFrame {
         return item;
     }
 
-    void constructAndAddTab(String title, String content) {
+    void constructAndAddTab(File file, String content) {
+        String title = file == null ? "Untitled - " + PreferenceStore.getInstance().getAndIncrementUntitledCounter() : file.getName();
+
         JComponent newTab = new JScrollPane(new JTextArea(content));
         this.tabbedPane.addTab(title, newTab);
+        this.tabToFileMap.put(newTab, file);
         this.tabbedPane.setSelectedComponent(newTab);
 
         int index = this.tabbedPane.indexOfComponent(newTab);
@@ -71,6 +89,7 @@ class SausageFrame extends JFrame {
         popupMenu.add(constructMenuItemWithAction("Close", new Runnable() {
             @Override
             public void run() {
+                SausageFrame.this.tabToFileMap.remove(newTab);
                 SausageFrame.this.tabbedPane.remove(newTab);
             }
         }));
@@ -78,9 +97,7 @@ class SausageFrame extends JFrame {
     }
 
     void constructAndAddUntitledTab() {
-        String title = "Untitled - " + PreferenceStore.getInstance().getAndIncrementUntitledCounter();
-
-        this.constructAndAddTab(title, "");
+        this.constructAndAddTab(null, "");
     }
 
     void constructMenu() {
@@ -96,15 +113,42 @@ class SausageFrame extends JFrame {
             public void run() {
                 File file = ReadWriteUtils.getFileFromUI(SausageFrame.this);
                 try {
-                    String content = ReadWriteUtils.readFile(file, Charset.forName("US-ASCII"));
+                    if (file != null) {
+                        String content = ReadWriteUtils.readFile(file, Charset.forName("UTF-8"));
 
-                    SausageFrame.this.constructAndAddTab(file.getName(), content);
+                        SausageFrame.this.constructAndAddTab(file, content);
+                    }
                 } catch (IOException ex) {
                     // TODO
                 }
             }
         }));
-        fileMenu.add(new JMenuItem("Duplicate"));
+        fileMenu.add(constructMenuItemWithAction("Duplicate", new Runnable() {
+            @Override
+            public void run() {
+                JScrollPane selectedTab = (JScrollPane)(tabbedPane.getSelectedComponent());
+                File file = tabToFileMap.get(selectedTab);
+                String content = ((JTextArea)(selectedTab.getViewport().getView())).getText();
+
+                SausageFrame.this.constructAndAddTab(file, content);
+            }
+        }));
+        fileMenu.add(constructMenuItemWithAction("Save as", new Runnable() {
+            @Override
+            public void run() {
+                File file = ReadWriteUtils.getFileFromUI(SausageFrame.this);
+                try {
+                    if (file != null && !file.exists()) {
+                        JScrollPane selectedTab = (JScrollPane)(tabbedPane.getSelectedComponent());
+                        String content = ((JTextArea)(selectedTab.getViewport().getView())).getText();
+
+                        ReadWriteUtils.writeFile(file, Charset.forName("UTF-8"), content);
+                    }
+                } catch (IOException ex) {
+                    // pass
+                }
+            }
+        }));
 
         this.menuBar.add(fileMenu);
     }
