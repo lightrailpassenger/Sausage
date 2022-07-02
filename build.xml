@@ -1,0 +1,35 @@
+<project name="Sausage" default="dist" basedir=".">
+  <description>
+    A simple text editor
+  </description>
+  <property name="main-class" value="io.github.lightrailpassenger.sausage.Sausage"/>
+  <property name="manifest" value="MANIFEST.mf"/>
+  <property name="src" location="io/github/lightrailpassenger/sausage"/>
+  <property name="build" location="build"/>
+  <property name="dist" location="dist"/>
+
+  <manifest file="${manifest}">
+    <attribute name="Main-Class" value="${main-class}"/>
+  </manifest>
+  <target name="init">
+    <tstamp/>
+    <mkdir dir="${build}"/>
+  </target>
+
+  <target name="compile" depends="init"
+        description="compile the source">
+    <javac srcdir="${src}" destdir="${build}"/>
+  </target>
+
+  <target name="dist" depends="compile"
+        description="generate the distribution">
+    <mkdir dir="${dist}"/>
+    <jar jarfile="${dist}/Sausage.jar" basedir="${build}" manifest="${manifest}"/>
+  </target>
+
+  <target name="clean"
+        description="clean up">
+    <delete dir="${build}"/>
+    <delete dir="${dist}"/>
+  </target>
+</project>
