@@ -1,6 +1,7 @@
 package io.github.lightrailpassenger.sausage;
 
 import java.awt.Font;
+import java.io.File;
 import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -34,7 +35,8 @@ public class Sausage {
                     // pass
                 }
 
-                SausageFrame frame = new SausageFrame();
+                Settings settings = new Settings(new File(System.getProperty("user.home"), ".sausage.pref"));
+                SausageFrame frame = new SausageFrame(settings);
                 PreferenceStore.getInstance().addFrame(frame);
 
                 frame.constructAndAddUntitledTab();

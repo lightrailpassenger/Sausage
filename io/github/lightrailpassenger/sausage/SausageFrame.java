@@ -2,6 +2,7 @@ package io.github.lightrailpassenger.sausage;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -25,6 +26,7 @@ import javax.swing.JTextArea;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import io.github.lightrailpassenger.sausage.constants.SettingKeys;
 import io.github.lightrailpassenger.sausage.utils.ReadWriteUtils;
 
 import static io.github.lightrailpassenger.sausage.constants.SausageConstants.*;
@@ -33,16 +35,36 @@ class SausageFrame extends JFrame implements ChangeListener {
     private final Map<JComponent, File> tabToFileMap = new HashMap<>();
     private final JMenuBar menuBar = new JMenuBar();
     private final JTabbedPane tabbedPane = new JTabbedPane();
+    private final Settings settings;
 
-    SausageFrame() {
+    SausageFrame(Settings settings) {
         super(SAUSAGE_FRAME_TITLE);
 
+        this.settings = settings;
         this.setLayout(new BorderLayout());
         this.setJMenuBar(this.menuBar);
         this.constructMenu();
         this.add(tabbedPane, BorderLayout.CENTER);
         this.tabbedPane.addChangeListener(this);
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        settings.addListener(new SettingChangeListener() {
+            @Override
+            public void settingChanged(SettingChangeEvent ev) {
+                Font font = new Font(
+                    settings.getProperty(SettingKeys.FONT_NAME),
+                    Font.PLAIN,
+                    settings.getInt(SettingKeys.FONT_SIZE, 13)
+                );
+
+                for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+                    JScrollPane pane = (JScrollPane)(tabbedPane.getComponentAt(i));
+                    JTextArea textArea = (JTextArea)(pane.getViewport().getView());
+
+                    textArea.setFont(font);
+                }
+            }
+        });
     }
 
     @Override
@@ -69,7 +91,14 @@ class SausageFrame extends JFrame implements ChangeListener {
     void constructAndAddTab(File file, String content) {
         String title = file == null ? "Untitled - " + PreferenceStore.getInstance().getAndIncrementUntitledCounter() : file.getName();
 
-        JComponent newTab = new JScrollPane(new JTextArea(content));
+        JTextArea textArea = new JTextArea(content);
+        textArea.setFont(new Font(
+            settings.getProperty(SettingKeys.FONT_NAME),
+            Font.PLAIN,
+            settings.getInt(SettingKeys.FONT_SIZE, 13)
+        ));
+
+        JComponent newTab = new JScrollPane(textArea);
         this.tabbedPane.addTab(title, newTab);
         this.tabToFileMap.put(newTab, file);
         this.tabbedPane.setSelectedComponent(newTab);
@@ -147,6 +176,14 @@ class SausageFrame extends JFrame implements ChangeListener {
                 } catch (IOException ex) {
                     // pass
                 }
+            }
+        }));
+        fileMenu.addSeparator();
+        fileMenu.add(constructMenuItemWithAction("Settings", new Runnable() {
+            @Override
+            public void run() {
+                SettingsDialog dialog = new SettingsDialog(SausageFrame.this, SausageFrame.this.settings);
+                dialog.setVisible(true);
             }
         }));
 
