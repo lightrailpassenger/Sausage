@@ -25,6 +25,7 @@ import javax.swing.plaf.basic.BasicComboBoxRenderer;
 import java.util.Arrays;
 import java.util.Comparator;
 
+import static io.github.lightrailpassenger.sausage.constants.SausageConstants.*;
 import io.github.lightrailpassenger.sausage.constants.SettingKeys;
 
 public class SettingsDialog extends JDialog {
@@ -107,7 +108,7 @@ public class SettingsDialog extends JDialog {
         });
 
         JSpinner spinner = new JSpinner(
-            new SpinnerNumberModel(settings.getInt(SettingKeys.FONT_SIZE, 13), 8, 50, 1)
+            new SpinnerNumberModel(settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE), 8, 50, 1)
         );
 
         spinner.addChangeListener(new ChangeListener() {

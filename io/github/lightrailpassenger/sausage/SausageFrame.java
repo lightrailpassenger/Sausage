@@ -54,7 +54,7 @@ class SausageFrame extends JFrame implements ChangeListener {
                 Font font = new Font(
                     settings.getProperty(SettingKeys.FONT_NAME),
                     Font.PLAIN,
-                    settings.getInt(SettingKeys.FONT_SIZE, 13)
+                    settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE)
                 );
 
                 for (int i = 0; i < tabbedPane.getTabCount(); i++) {
@@ -95,7 +95,7 @@ class SausageFrame extends JFrame implements ChangeListener {
         textArea.setFont(new Font(
             settings.getProperty(SettingKeys.FONT_NAME),
             Font.PLAIN,
-            settings.getInt(SettingKeys.FONT_SIZE, 13)
+            settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE)
         ));
 
         JComponent newTab = new JScrollPane(textArea);
