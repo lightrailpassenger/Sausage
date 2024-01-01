@@ -19,6 +19,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -152,7 +153,7 @@ class SausageFrame extends JFrame implements ChangeListener {
                         SausageFrame.this.constructAndAddTab(file, content);
                     }
                 } catch (IOException ex) {
-                    // TODO
+                    JOptionPane.showMessageDialog(SausageFrame.this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }));
@@ -177,7 +178,7 @@ class SausageFrame extends JFrame implements ChangeListener {
                         ReadWriteUtils.writeFile(file, Charset.forName("UTF-8"), content);
                     }
                 } catch (IOException ex) {
-                    // pass
+                    JOptionPane.showMessageDialog(SausageFrame.this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }));
