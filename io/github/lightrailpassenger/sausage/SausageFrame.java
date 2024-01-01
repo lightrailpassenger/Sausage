@@ -1,6 +1,7 @@
 package io.github.lightrailpassenger.sausage;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -58,13 +59,16 @@ class SausageFrame extends JFrame implements ChangeListener {
                 );
 
                 for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-                    JScrollPane pane = (JScrollPane)(tabbedPane.getComponentAt(i));
-                    JTextArea textArea = (JTextArea)(pane.getViewport().getView());
+                    JTextArea textArea = SausageFrame.getTextAreaByTabbedPaneComponent(tabbedPane.getComponentAt(i));
 
                     textArea.setFont(font);
                 }
             }
         });
+    }
+
+    private static JTextArea getTextAreaByTabbedPaneComponent(Component c) {
+        return (JTextArea)((JScrollPane)c).getViewport().getView();
     }
 
     @Override
@@ -157,7 +161,7 @@ class SausageFrame extends JFrame implements ChangeListener {
             public void run() {
                 JScrollPane selectedTab = (JScrollPane)(tabbedPane.getSelectedComponent());
                 File file = tabToFileMap.get(selectedTab);
-                String content = ((JTextArea)(selectedTab.getViewport().getView())).getText();
+                String content = SausageFrame.getTextAreaByTabbedPaneComponent(selectedTab).getText();
 
                 SausageFrame.this.constructAndAddTab(file, content);
             }
@@ -168,8 +172,7 @@ class SausageFrame extends JFrame implements ChangeListener {
                 File file = ReadWriteUtils.getFileFromUI(SausageFrame.this);
                 try {
                     if (file != null && !file.exists()) {
-                        JScrollPane selectedTab = (JScrollPane)(tabbedPane.getSelectedComponent());
-                        String content = ((JTextArea)(selectedTab.getViewport().getView())).getText();
+                        String content = SausageFrame.getTextAreaByTabbedPaneComponent(tabbedPane.getSelectedComponent()).getText();
 
                         ReadWriteUtils.writeFile(file, Charset.forName("UTF-8"), content);
                     }
