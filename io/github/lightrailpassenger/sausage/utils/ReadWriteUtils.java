@@ -13,7 +13,7 @@ import javax.swing.JFileChooser;
 public class ReadWriteUtils {
     public static File getFileFromUI(Component parent) {
         JFileChooser chooser = new JFileChooser();
-        int returnValue = chooser.showOpenDialog(parent);
+        int returnValue = chooser.showDialog(parent, "Choose File");
 
         return returnValue == JFileChooser.APPROVE_OPTION ? chooser.getSelectedFile() : null;
     }
