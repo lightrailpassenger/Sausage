@@ -48,7 +48,6 @@ class SausageFrame extends JFrame implements ChangeListener {
         this.constructMenu();
         this.add(tabbedPane, BorderLayout.CENTER);
         this.tabbedPane.addChangeListener(this);
-        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         settings.addListener(new SettingChangeListener() {
             @Override

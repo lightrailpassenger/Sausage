@@ -65,6 +65,10 @@ public class Settings {
         }
     }
 
+    public <T> T get(SettingKeys key, Coercer<T> coercer) {
+        return coercer.coerce(this.prop.getProperty(key.toString()));
+    }
+
     public void setProperty(SettingKeys key, Object value) {
         this.prop.setProperty(key.toString(), value.toString());
 
