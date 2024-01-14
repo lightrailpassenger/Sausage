@@ -11,6 +11,7 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 import javax.swing.JComponent;
@@ -27,8 +28,10 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.text.AbstractDocument;
 
 import io.github.lightrailpassenger.sausage.constants.SettingKeys;
+import io.github.lightrailpassenger.sausage.indent.AutoIndentDocumentFilter;
 import io.github.lightrailpassenger.sausage.utils.ReadWriteUtils;
 
 import static io.github.lightrailpassenger.sausage.constants.SausageConstants.*;
@@ -101,6 +104,9 @@ class SausageFrame extends JFrame implements ChangeListener {
             Font.PLAIN,
             settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE)
         ));
+
+        AbstractDocument document = (AbstractDocument)(textArea.getDocument());
+        document.setDocumentFilter(new AutoIndentDocumentFilter(textArea, Arrays.asList('{'), Arrays.asList('}'), 2, ' ')); // TODO: read from properties
 
         JComponent newTab = new JScrollPane(textArea);
         this.tabbedPane.addTab(title, newTab);
