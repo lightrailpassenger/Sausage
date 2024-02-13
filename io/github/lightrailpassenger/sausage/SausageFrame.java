@@ -67,7 +67,7 @@ class SausageFrame extends JFrame implements ChangeListener {
                 for (int i = 0; i < tabbedPane.getTabCount(); i++) {
                     Component component = tabbedPane.getComponentAt(i);
                     JTextArea textArea = SausageFrame.getTextAreaByTabbedPaneComponent(component);
-                    VerticalLineLayer verticalLineLayer = (VerticalLineLayer)(((JLayeredPane)component).getComponentsInLayer(2)[0]);
+                    VerticalLineLayer verticalLineLayer = (VerticalLineLayer)(SausageFrame.getLayerByTabbedPaneComponent(component, 2));
 
                     textArea.setFont(font);
                     verticalLineLayer.setFont(font);
@@ -78,10 +78,14 @@ class SausageFrame extends JFrame implements ChangeListener {
         });
     }
 
-    private static JTextArea getTextAreaByTabbedPaneComponent(Component c) {
-        JLayeredPane layeredPane = (JLayeredPane)c;
+    private static Component getLayerByTabbedPaneComponent(Component c, int layer) {
+        JScrollPane scrollPane = (JScrollPane)c;
 
-        return (JTextArea)((JScrollPane)(layeredPane.getComponentsInLayer(1)[0])).getViewport().getView();
+        return ((JLayeredPane)(scrollPane.getViewport().getView())).getComponentsInLayer(layer)[0];
+    }
+
+    private static JTextArea getTextAreaByTabbedPaneComponent(Component c) {
+        return (JTextArea)(SausageFrame.getLayerByTabbedPaneComponent(c, 1));
     }
 
     @Override
@@ -119,14 +123,14 @@ class SausageFrame extends JFrame implements ChangeListener {
 
         textArea.setFont(font);
 
-        JLayeredPane newTab = new JLayeredPane();
-        newTab.setLayout(new OverlayLayout(newTab));
+        JLayeredPane layeredPane = new LayeredScrollablePane(textArea);
+        layeredPane.setLayout(new OverlayLayout(layeredPane));
 
-        JScrollPane scrollPane = new JScrollPane(textArea);
+        JScrollPane newTab = new JScrollPane(layeredPane);
         VerticalLineLayer verticalLineLayer = new VerticalLineLayer(font, shouldEnableVerticalLine ? verticalLineWidth : -1);
 
-        newTab.add(scrollPane, Integer.valueOf(1));
-        newTab.add(verticalLineLayer, Integer.valueOf(2));
+        layeredPane.add(textArea, Integer.valueOf(1));
+        layeredPane.add(verticalLineLayer, Integer.valueOf(2));
 
         this.tabbedPane.addTab(title, newTab);
         this.tabToFileMap.put(newTab, file);
