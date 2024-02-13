@@ -25,12 +25,12 @@ public class LayeredScrollablePane extends JLayeredPane implements Scrollable {
 
     @Override
     public boolean getScrollableTracksViewportHeight() {
-        return this.sc.getScrollableTracksViewportHeight();
+        return true;
     }
 
     @Override
     public boolean getScrollableTracksViewportWidth() {
-        return this.sc.getScrollableTracksViewportWidth();
+        return true;
     }
 
     @Override
