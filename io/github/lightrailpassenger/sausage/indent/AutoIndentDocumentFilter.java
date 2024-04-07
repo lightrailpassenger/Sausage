@@ -50,7 +50,7 @@ public class AutoIndentDocumentFilter extends DocumentFilter {
     private void indentInsertion(DocumentFilter.FilterBypass fb, int offset, String string, AttributeSet set) throws BadLocationException {
         boolean isNewLine = false;
 
-        if ((isNewLine = "\n".equals(string)) || this.indentEndSymbols.contains(string.charAt(0))) {
+        if ((isNewLine = "\n".equals(string)) || (string.length() > 0 && this.indentEndSymbols.contains(string.charAt(0)))) {
             int caret = this.textArea.getCaretPosition();
             int lineNumber = this.textArea.getLineOfOffset(caret);
             int lineStart = this.textArea.getLineStartOffset(lineNumber);
@@ -76,7 +76,7 @@ public class AutoIndentDocumentFilter extends DocumentFilter {
                 }
 
                 super.insertString(fb, offset - indent.length(), string, set);
-            } else if (this.indentStartSymbols.contains(line.charAt(line.length() - 1))) {
+            } else if (line.length() > 0 && this.indentStartSymbols.contains(line.charAt(line.length() - 1))) {
                 super.insertString(fb, offset, string + previousFullIndent + this.indent, set);
             } else {
                 super.insertString(fb, offset, string + previousFullIndent, set);

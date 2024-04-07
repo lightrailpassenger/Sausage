@@ -12,8 +12,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -33,14 +35,23 @@ import javax.swing.text.AbstractDocument;
 import io.github.lightrailpassenger.sausage.constants.SettingKeys;
 import io.github.lightrailpassenger.sausage.indent.AutoIndentDocumentFilter;
 import io.github.lightrailpassenger.sausage.utils.ReadWriteUtils;
+import io.github.lightrailpassenger.sausage.utils.StringUtil;
 
 import static io.github.lightrailpassenger.sausage.constants.SausageConstants.*;
 
 class SausageFrame extends JFrame implements ChangeListener {
+    private static final Map<String, String> defaultMapCoercerCache = new HashMap<>();
+    static {
+        defaultMapCoercerCache.put("TYPE_TO_EXTENSION", "java:java;javascript:js,ts,jsx,tsx,cjs,mjs,cts,mts");
+        defaultMapCoercerCache.put("TYPE_TO_INDENT_START", "java:{;javascript:{");
+        defaultMapCoercerCache.put("TYPE_TO_INDENT_END", "java:};javascript:}");
+    }
+
     private final Map<JComponent, File> tabToFileMap = new HashMap<>();
     private final JMenuBar menuBar = new JMenuBar();
     private final JTabbedPane tabbedPane = new JTabbedPane();
     private final Settings settings;
+    private final MapCoercer mapCoercer = new MapCoercer(defaultMapCoercerCache);
 
     SausageFrame(Settings settings) {
         super(SAUSAGE_FRAME_TITLE);
@@ -95,6 +106,67 @@ class SausageFrame extends JFrame implements ChangeListener {
         return item;
     }
 
+    private void configureFileTypeSpecificLogic(File file, JTextArea textArea) {
+        if (file == null) {
+            return;
+        }
+
+        Map<String, String[]> typeToExtensionMap = settings.get(SettingKeys.TYPE_TO_EXTENSION, mapCoercer);
+        Map<String, String[]> typeToIndentStartMap = settings.get(SettingKeys.TYPE_TO_INDENT_START, mapCoercer);
+        Map<String, String[]> typeToIndentEndMap = settings.get(SettingKeys.TYPE_TO_INDENT_END, mapCoercer);
+
+        String fileName = file.getName();
+        int dotIndex = fileName.indexOf('.');
+
+        if (dotIndex <= 0) {
+            // Include: no `.`, or `.` at the start e.g. `.DS_Store`
+            return;
+        }
+
+        String extension = fileName.substring(dotIndex + 1).toLowerCase();
+        String type = null;
+
+        for (Map.Entry<String, String[]> typeToExtensionMapEntry: typeToExtensionMap.entrySet()) {
+            if (Arrays.asList(typeToExtensionMapEntry.getValue()).contains(extension)) {
+                type = typeToExtensionMapEntry.getKey();
+                break;
+            }
+        }
+
+        if (type == null) {
+            return;
+        }
+
+        String[] indentStartChars = typeToIndentStartMap.get(type);
+        String[] indentEndChars = typeToIndentEndMap.get(type);
+
+        List<Character> indentStartCharList = new ArrayList<>();
+        List<Character> indentEndCharList = new ArrayList<>();
+
+        if (indentStartChars != null) {
+            for (char indentStartChar: indentStartChars[0].toCharArray()) {
+                indentStartCharList.add((Character)indentStartChar);
+            }
+        }
+
+        if (indentEndChars != null) {
+            for (char indentEndChar: indentEndChars[0].toCharArray()) {
+                indentEndCharList.add((Character)indentEndChar);
+            }
+        }
+
+        int indentation = StringUtil.deriveIndentation(textArea.getText());
+
+        AbstractDocument document = (AbstractDocument)(textArea.getDocument());
+        document.setDocumentFilter(new AutoIndentDocumentFilter(
+            textArea,
+            indentStartCharList,
+            indentEndCharList,
+            indentation == 0 ? 2 : indentation, // TODO: Change default by reading properties
+            ' '
+        ));
+    }
+
     void constructAndAddTab(File file, String content) {
         String title = file == null ? "Untitled - " + PreferenceStore.getInstance().getAndIncrementUntitledCounter() : file.getName();
 
@@ -105,8 +177,7 @@ class SausageFrame extends JFrame implements ChangeListener {
             settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE)
         ));
 
-        AbstractDocument document = (AbstractDocument)(textArea.getDocument());
-        document.setDocumentFilter(new AutoIndentDocumentFilter(textArea, Arrays.asList('{'), Arrays.asList('}'), 2, ' ')); // TODO: read from properties
+        this.configureFileTypeSpecificLogic(file, textArea);
 
         JComponent newTab = new JScrollPane(textArea);
         this.tabbedPane.addTab(title, newTab);
@@ -178,9 +249,11 @@ class SausageFrame extends JFrame implements ChangeListener {
                 File file = ReadWriteUtils.getFileFromUI(SausageFrame.this);
                 try {
                     if (file != null && !file.exists()) {
-                        String content = SausageFrame.getTextAreaByTabbedPaneComponent(tabbedPane.getSelectedComponent()).getText();
+                        JTextArea textArea = SausageFrame.getTextAreaByTabbedPaneComponent(tabbedPane.getSelectedComponent());
+                        String content = textArea.getText();
 
                         ReadWriteUtils.writeFile(file, Charset.forName("UTF-8"), content);
+                        SausageFrame.this.configureFileTypeSpecificLogic(file, textArea);
                     }
                 } catch (IOException ex) {
                     JOptionPane.showMessageDialog(SausageFrame.this, ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
