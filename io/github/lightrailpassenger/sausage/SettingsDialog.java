@@ -2,6 +2,7 @@ package io.github.lightrailpassenger.sausage;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
@@ -12,6 +13,7 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -124,10 +126,44 @@ public class SettingsDialog extends JDialog {
         return panel;
     }
 
+    private JPanel createVerticalLineSection() {
+        JPanel panel = new JPanel(new FlowLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Vertical line"));
+
+        boolean shouldEnableVerticalLine = "true".equals(settings.getProperty(SettingKeys.SHOULD_ENABLE_VERTICAL_LINE));
+        int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
+
+        final JCheckBox checkBox = new JCheckBox("Show", shouldEnableVerticalLine);
+        final JSpinner spinner = new JSpinner(new SpinnerNumberModel(verticalLineWidth, 20, 2000, 1));
+
+        checkBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ev) {
+                boolean isSelected = checkBox.isSelected();
+
+                settings.setProperty(SettingKeys.SHOULD_ENABLE_VERTICAL_LINE, isSelected);
+                spinner.setEnabled(isSelected);
+            }
+        });
+
+        spinner.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent ev) {
+                settings.setProperty(SettingKeys.VERTICAL_LINE_WIDTH, (int)spinner.getValue());
+            }
+        });
+
+        panel.add(checkBox);
+        panel.add(spinner);
+
+        return panel;
+    }
+
     private void initialize() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.PAGE_AXIS));
         panel.add(createFontSection());
+        panel.add(createVerticalLineSection());
 
         this.add(panel, BorderLayout.CENTER);
         this.pack();

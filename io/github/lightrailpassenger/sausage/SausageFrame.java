@@ -2,6 +2,7 @@ package io.github.lightrailpassenger.sausage;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -25,6 +27,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
+import javax.swing.OverlayLayout;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -52,23 +55,37 @@ class SausageFrame extends JFrame implements ChangeListener {
         settings.addListener(new SettingChangeListener() {
             @Override
             public void settingChanged(SettingChangeEvent ev) {
+                // TODO: Refactor this to remove duplicate.
                 Font font = new Font(
                     settings.getProperty(SettingKeys.FONT_NAME),
                     Font.PLAIN,
                     settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE)
                 );
+                boolean shouldEnableVerticalLine = "true".equals(settings.getProperty(SettingKeys.SHOULD_ENABLE_VERTICAL_LINE));
+                int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
 
                 for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-                    JTextArea textArea = SausageFrame.getTextAreaByTabbedPaneComponent(tabbedPane.getComponentAt(i));
+                    Component component = tabbedPane.getComponentAt(i);
+                    JTextArea textArea = SausageFrame.getTextAreaByTabbedPaneComponent(component);
+                    VerticalLineLayer verticalLineLayer = (VerticalLineLayer)(SausageFrame.getLayerByTabbedPaneComponent(component, 2));
 
                     textArea.setFont(font);
+                    verticalLineLayer.setFont(font);
+                    verticalLineLayer.setWidth(shouldEnableVerticalLine ? verticalLineWidth : -1);
+                    verticalLineLayer.repaint();
                 }
             }
         });
     }
 
+    private static Component getLayerByTabbedPaneComponent(Component c, int layer) {
+        JScrollPane scrollPane = (JScrollPane)c;
+
+        return ((JLayeredPane)(scrollPane.getViewport().getView())).getComponentsInLayer(layer)[0];
+    }
+
     private static JTextArea getTextAreaByTabbedPaneComponent(Component c) {
-        return (JTextArea)((JScrollPane)c).getViewport().getView();
+        return (JTextArea)(SausageFrame.getLayerByTabbedPaneComponent(c, 1));
     }
 
     @Override
@@ -96,13 +113,25 @@ class SausageFrame extends JFrame implements ChangeListener {
         String title = file == null ? "Untitled - " + PreferenceStore.getInstance().getAndIncrementUntitledCounter() : file.getName();
 
         JTextArea textArea = new JTextArea(content);
-        textArea.setFont(new Font(
+        Font font = new Font(
             settings.getProperty(SettingKeys.FONT_NAME),
             Font.PLAIN,
             settings.getInt(SettingKeys.FONT_SIZE, DEFAULT_FONT_SIZE)
-        ));
+        );
+        boolean shouldEnableVerticalLine = "true".equals(settings.getProperty(SettingKeys.SHOULD_ENABLE_VERTICAL_LINE));
+        int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
 
-        JComponent newTab = new JScrollPane(textArea);
+        textArea.setFont(font);
+
+        JLayeredPane layeredPane = new LayeredScrollablePane(textArea);
+        layeredPane.setLayout(new OverlayLayout(layeredPane));
+
+        JScrollPane newTab = new JScrollPane(layeredPane);
+        VerticalLineLayer verticalLineLayer = new VerticalLineLayer(font, shouldEnableVerticalLine ? verticalLineWidth : -1);
+
+        layeredPane.add(textArea, Integer.valueOf(1));
+        layeredPane.add(verticalLineLayer, Integer.valueOf(2));
+
         this.tabbedPane.addTab(title, newTab);
         this.tabToFileMap.put(newTab, file);
         this.tabbedPane.setSelectedComponent(newTab);
