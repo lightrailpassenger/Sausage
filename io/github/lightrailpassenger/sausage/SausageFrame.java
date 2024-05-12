@@ -7,6 +7,8 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -199,6 +201,22 @@ class SausageFrame extends JFrame implements ChangeListener {
         int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
 
         textArea.setFont(font);
+        textArea.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent ev) {
+                int keyCode = ev.getKeyCode();
+                int modifier = ev.getModifiersEx();
+
+                switch (modifier + " " + keyCode) {
+                    case "256 90":
+                        undo();
+                        break;
+                    case "320 90":
+                        redo();
+                        break;
+                }
+            }
+        });
 
         JLayeredPane layeredPane = new LayeredScrollablePane(textArea);
         layeredPane.setLayout(new OverlayLayout(layeredPane));
@@ -255,6 +273,24 @@ class SausageFrame extends JFrame implements ChangeListener {
 
     void constructAndAddUntitledTab() {
         this.constructAndAddTab(null, "");
+    }
+
+    void undo() {
+        JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
+        HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
+
+        if (history.canUndo()) {
+            history.undo();
+        }
+    }
+
+    void redo() {
+        JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
+        HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
+
+        if (history.canRedo()) {
+            history.redo();
+        }
     }
 
     void constructMenu() {
@@ -321,24 +357,14 @@ class SausageFrame extends JFrame implements ChangeListener {
         editMenu.add(constructMenuItemWithAction("Undo", new Runnable() {
             @Override
             public void run() {
-                JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
-                HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
-
-                if (history.canUndo()) {
-                    history.undo();
-                }
+                undo();
             }
         }));
 
         editMenu.add(constructMenuItemWithAction("Redo", new Runnable() {
             @Override
             public void run() {
-                JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
-                HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
-
-                if (history.canRedo()) {
-                    history.redo();
-                }
+                redo();
             }
         }));
 
