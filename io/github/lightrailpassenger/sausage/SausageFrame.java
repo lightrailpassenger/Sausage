@@ -7,8 +7,6 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -32,6 +30,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 import javax.swing.OverlayLayout;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -115,7 +114,7 @@ class SausageFrame extends JFrame implements ChangeListener {
         }
     }
 
-    private static JMenuItem constructMenuItemWithAction(String name, Runnable action) {
+    private static JMenuItem constructMenuItemWithAction(String name, Runnable action, KeyStroke ks) {
         JMenuItem item = new JMenuItem(name);
         item.addActionListener(new ActionListener() {
             @Override
@@ -123,8 +122,13 @@ class SausageFrame extends JFrame implements ChangeListener {
                 action.run();
             }
         });
+        item.setAccelerator(ks);
 
         return item;
+    }
+
+    private static JMenuItem constructMenuItemWithAction(String name, Runnable action) {
+        return constructMenuItemWithAction(name, action, null);
     }
 
     private void configureFileTypeSpecificLogic(File file, JTextArea textArea) {
@@ -201,22 +205,6 @@ class SausageFrame extends JFrame implements ChangeListener {
         int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
 
         textArea.setFont(font);
-        textArea.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent ev) {
-                int keyCode = ev.getKeyCode();
-                int modifier = ev.getModifiersEx();
-
-                switch (modifier + " " + keyCode) {
-                    case "256 90":
-                        undo();
-                        break;
-                    case "320 90":
-                        redo();
-                        break;
-                }
-            }
-        });
 
         JLayeredPane layeredPane = new LayeredScrollablePane(textArea);
         layeredPane.setLayout(new OverlayLayout(layeredPane));
@@ -359,14 +347,14 @@ class SausageFrame extends JFrame implements ChangeListener {
             public void run() {
                 undo();
             }
-        }));
+        }, KeyStroke.getKeyStroke(90, 256)));
 
         editMenu.add(constructMenuItemWithAction("Redo", new Runnable() {
             @Override
             public void run() {
                 redo();
             }
-        }));
+        }, KeyStroke.getKeyStroke(90, 320)));
 
         this.menuBar.add(fileMenu);
         this.menuBar.add(editMenu);
