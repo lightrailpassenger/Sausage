@@ -36,6 +36,7 @@ import javax.swing.event.ChangeListener;
 import javax.swing.text.AbstractDocument;
 
 import io.github.lightrailpassenger.sausage.constants.SettingKeys;
+import io.github.lightrailpassenger.sausage.history.HistoryIntervalRecorder;
 import io.github.lightrailpassenger.sausage.indent.AutoIndentDocumentFilter;
 import io.github.lightrailpassenger.sausage.utils.ReadWriteUtils;
 import io.github.lightrailpassenger.sausage.utils.StringUtil;
@@ -51,6 +52,7 @@ class SausageFrame extends JFrame implements ChangeListener {
     }
 
     private final Map<JComponent, File> tabToFileMap = new HashMap<>();
+    private final Map<JComponent, HistoryIntervalRecorder<String>> tabToHistoryIntervalRecorderMap = new HashMap<>();
     private final JMenuBar menuBar = new JMenuBar();
     private final JTabbedPane tabbedPane = new JTabbedPane();
     private final Settings settings;
@@ -210,6 +212,22 @@ class SausageFrame extends JFrame implements ChangeListener {
         this.configureFileTypeSpecificLogic(file, textArea);
         this.tabbedPane.addTab(title, newTab);
         this.tabToFileMap.put(newTab, file);
+        this.tabToHistoryIntervalRecorderMap.put(newTab, new HistoryIntervalRecorder<String>(new HistoryIntervalRecorder.State<String>() {
+            @Override
+            public String get() {
+                return textArea.getText();
+            }
+
+            @Override
+            public void set(String text) {
+                textArea.setText(text);
+            }
+
+            @Override
+            public String getInitialState() {
+                return "";
+            }
+        }));
         this.tabbedPane.setSelectedComponent(newTab);
 
         int index = this.tabbedPane.indexOfComponent(newTab);
@@ -228,6 +246,7 @@ class SausageFrame extends JFrame implements ChangeListener {
             @Override
             public void run() {
                 SausageFrame.this.tabToFileMap.remove(newTab);
+                SausageFrame.this.tabToHistoryIntervalRecorderMap.remove(newTab);
                 SausageFrame.this.tabbedPane.remove(newTab);
             }
         }));
@@ -297,6 +316,33 @@ class SausageFrame extends JFrame implements ChangeListener {
             }
         }));
 
+        JMenu editMenu = new JMenu("Edit");
+
+        editMenu.add(constructMenuItemWithAction("Undo", new Runnable() {
+            @Override
+            public void run() {
+                JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
+                HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
+
+                if (history.canUndo()) {
+                    history.undo();
+                }
+            }
+        }));
+
+        editMenu.add(constructMenuItemWithAction("Redo", new Runnable() {
+            @Override
+            public void run() {
+                JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
+                HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
+
+                if (history.canRedo()) {
+                    history.redo();
+                }
+            }
+        }));
+
         this.menuBar.add(fileMenu);
+        this.menuBar.add(editMenu);
     }
 }
