@@ -7,6 +7,9 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
@@ -35,16 +38,18 @@ import javax.swing.OverlayLayout;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.text.AbstractDocument;
+import javax.swing.text.JTextComponent;
 
 import io.github.lightrailpassenger.sausage.constants.SettingKeys;
 import io.github.lightrailpassenger.sausage.history.HistoryIntervalRecorder;
 import io.github.lightrailpassenger.sausage.indent.AutoIndentDocumentFilter;
+import io.github.lightrailpassenger.sausage.indent.TextIndentUtil;
 import io.github.lightrailpassenger.sausage.utils.ReadWriteUtils;
 import io.github.lightrailpassenger.sausage.utils.StringUtil;
 
 import static io.github.lightrailpassenger.sausage.constants.SausageConstants.*;
 
-class SausageFrame extends JFrame implements ChangeListener {
+class SausageFrame extends JFrame implements ChangeListener, KeyListener, TextSelectionReplacer.JTextComponentGetter {
     private static final Map<String, String> defaultMapCoercerCache = new HashMap<>();
     static {
         defaultMapCoercerCache.put("TYPE_TO_EXTENSION", "java:java;javascript:js,ts,jsx,tsx,cjs,mjs,cts,mts");
@@ -58,6 +63,7 @@ class SausageFrame extends JFrame implements ChangeListener {
     private final JTabbedPane tabbedPane = new JTabbedPane();
     private final Settings settings;
     private final MapCoercer mapCoercer = new MapCoercer(defaultMapCoercerCache);
+    private final List<KeyListener> textAreaKeyListeners = new ArrayList<>();
 
     SausageFrame(Settings settings) {
         super(SAUSAGE_FRAME_TITLE);
@@ -114,7 +120,32 @@ class SausageFrame extends JFrame implements ChangeListener {
         }
     }
 
-    private static JMenuItem constructMenuItemWithAction(String name, Runnable action, KeyStroke ks) {
+    @Override
+    public void keyPressed(KeyEvent ev) {
+        for (KeyListener listener: this.textAreaKeyListeners) {
+            listener.keyPressed(ev);
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent ev) {
+        for (KeyListener listener: this.textAreaKeyListeners) {
+            listener.keyReleased(ev);
+        }
+    }
+
+    @Override
+    public void keyTyped(KeyEvent ev) {
+        for (KeyListener listener: this.textAreaKeyListeners) {
+            listener.keyTyped(ev);
+        }
+    }
+
+    private void addTextAreaKeyListener(KeyListener listener) {
+        this.textAreaKeyListeners.add(listener);
+    }
+
+    private JMenuItem constructMenuItemWithAction(String name, Runnable action, KeyStroke ks, boolean shouldForceAddKeyListener) {
         JMenuItem item = new JMenuItem(name);
         item.addActionListener(new ActionListener() {
             @Override
@@ -124,10 +155,29 @@ class SausageFrame extends JFrame implements ChangeListener {
         });
         item.setAccelerator(ks);
 
+        if (shouldForceAddKeyListener) {
+            // FIXME: Do we really need to do this?
+            addTextAreaKeyListener(new KeyAdapter() {
+                @Override
+                public void keyPressed(KeyEvent ev) {
+                    int code = ev.getKeyCode();
+                    int modifier = ev.getModifiersEx();
+
+                    if (code == ks.getKeyCode() && modifier == ks.getModifiers()) {
+                        action.run();
+                    }
+                }
+            });
+        }
+
         return item;
     }
 
-    private static JMenuItem constructMenuItemWithAction(String name, Runnable action) {
+    private JMenuItem constructMenuItemWithAction(String name, Runnable action, KeyStroke ks) {
+        return constructMenuItemWithAction(name, action, ks, false);
+    }
+
+    private JMenuItem constructMenuItemWithAction(String name, Runnable action) {
         return constructMenuItemWithAction(name, action, null);
     }
 
@@ -205,6 +255,7 @@ class SausageFrame extends JFrame implements ChangeListener {
         int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
 
         textArea.setFont(font);
+        textArea.addKeyListener(this);
 
         JLayeredPane layeredPane = new LayeredScrollablePane(textArea);
         layeredPane.setLayout(new OverlayLayout(layeredPane));
@@ -281,6 +332,11 @@ class SausageFrame extends JFrame implements ChangeListener {
         }
     }
 
+    @Override
+    public JTextComponent getJTextComponent() {
+        return SausageFrame.getTextAreaByTabbedPaneComponent(this.tabbedPane.getSelectedComponent());
+    }
+
     void constructMenu() {
         JMenu fileMenu = new JMenu("File");
         fileMenu.add(constructMenuItemWithAction("New", new Runnable() {
@@ -348,13 +404,49 @@ class SausageFrame extends JFrame implements ChangeListener {
                 undo();
             }
         }, KeyStroke.getKeyStroke(90, 256)));
-
         editMenu.add(constructMenuItemWithAction("Redo", new Runnable() {
             @Override
             public void run() {
                 redo();
             }
         }, KeyStroke.getKeyStroke(90, 320)));
+        editMenu.addSeparator();
+        editMenu.add(constructMenuItemWithAction("Indent", new FullLineJTextAreaTextSelectionReplacer(this) {
+            @Override
+            public void preReplace() {
+                JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
+                HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
+                history.forceRecord();
+            }
+
+            @Override
+            public int rectifyPostSelectionStart(JTextComponent tc, int offset, Integer indentation) {
+                return offset + indentation;
+            }
+
+            @Override
+            public String replace(String selected, int spaceCount) {
+                return TextIndentUtil.indentString(selected, spaceCount);
+            }
+        }, KeyStroke.getKeyStroke(93, 256)));
+        editMenu.add(constructMenuItemWithAction("Unindent", new FullLineJTextAreaTextSelectionReplacer(this) {
+            @Override
+            public void preReplace() {
+                JComponent tab = (JComponent)(tabbedPane.getSelectedComponent());
+                HistoryIntervalRecorder<String> history = tabToHistoryIntervalRecorderMap.get(tab);
+                history.forceRecord();
+            }
+
+            @Override
+            public int rectifyPostSelectionStart(JTextComponent tc, int offset, Integer indentation) {
+                return offset - indentation;
+            }
+
+            @Override
+            public String replace(String selected, int spaceCount) {
+                return TextIndentUtil.unindentString(selected, spaceCount);
+            }
+        }, KeyStroke.getKeyStroke(91, 256)));
 
         this.menuBar.add(fileMenu);
         this.menuBar.add(editMenu);
