@@ -20,6 +20,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -255,6 +258,18 @@ class SausageFrame extends JFrame implements ChangeListener, KeyListener, TextSe
         int verticalLineWidth = settings.get(SettingKeys.VERTICAL_LINE_WIDTH, new NumericRangeCoercer(20, 2000, 80));
 
         textArea.setFont(font);
+
+        InputMap textAreaInputMap = textArea.getInputMap();
+        textAreaInputMap.put(KeyStroke.getKeyStroke("control C"), "noop");
+        textAreaInputMap.put(KeyStroke.getKeyStroke("control X"), "noop");
+        textAreaInputMap.put(KeyStroke.getKeyStroke("control V"), "noop");
+
+        ActionMap textAreaActionMap = textArea.getActionMap();
+        textAreaActionMap.put("noop", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent ev) {}
+        });
+
         textArea.addKeyListener(this);
 
         JLayeredPane layeredPane = new LayeredScrollablePane(textArea);
